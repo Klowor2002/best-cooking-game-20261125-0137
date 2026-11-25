@@ -2,7 +2,7 @@
 // this repository into the output directory and writes dossier.json there
 // with make.fun's buildDossier. Node 22, standard library only.
 // The grader runs it twice; both runs must write the same bytes.
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -20,8 +20,13 @@ const dossierCaps = {
 
 function handIn(): void {
   // Start from a clean output directory so a stale file can never leak in.
-  rmSync(outDir, { recursive: true, force: true });
+  // Clear the directory's CONTENTS, never the directory itself: the grader
+  // runs as an unprivileged user with a writable /output it cannot remove
+  // (rmSync on /output itself fails EPERM and the grade run exits 1).
   mkdirSync(outDir, { recursive: true });
+  for (const entry of readdirSync(outDir)) {
+    rmSync(join(outDir, entry), { recursive: true, force: true });
+  }
 
   // The game and its screenshots, copied whole.
   cpSync(join(repoRoot, 'game'), join(outDir, 'game'), { recursive: true });
